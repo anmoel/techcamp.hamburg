@@ -1,0 +1,131 @@
+apiVersion: types.federation.k8s.io/v1alpha1
+kind: FederatedService
+metadata:
+  name: wordpress-mysql
+  namespace: test-application
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: wordpress
+    tier: mysql
+  clusterIP: None
+  placement:
+    clusterNames:
+    - europe
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+  namespace: test-application
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+
+apiVersion: types.federation.k8s.io/v1alpha1
+kind: FederatedDeployment
+metadata:
+  name: wordpress-mysql
+  namespace: test-application
+spec:
+  template:
+    spec:
+      selector:
+        matchLabels:
+          app: wordpress
+          tier: mysql
+      template:
+        metadata:
+          labels:
+            app: wordpress
+            tier: mysql
+        spec:
+          containers:
+          - image: mysql:5.6
+            name: mysql
+            env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: PassWord1234
+            ports:
+            - containerPort: 3306
+              name: mysql
+            volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+          volumes:
+          - name: mysql-persistent-storage
+            persistentVolumeClaim:
+              claimName: mysql-pv-claim
+  placement:
+    clusterNames:
+    - europe
+
+---
+
+apiVersion: types.federation.k8s.io/v1alpha1
+kind: FederatedService
+metadata:
+  name: wordpress
+  namespace: test-application
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: wordpress
+    tier: frontend
+  type: LoadBalancer
+  placement:
+    clusterNames:
+    - europe
+    - asia
+    - north-america
+
+---
+
+apiVersion: types.federation.k8s.io/v1alpha1
+kind: FederatedDeployment
+metadata:
+  name: wordpress
+  namespace: test-application
+spec:
+  template:
+    spec:
+      selector:
+        matchLabels:
+          app: wordpress
+          tier: frontend
+      template:
+        metadata:
+          labels:
+            app: wordpress
+            tier: frontend
+        spec:
+          containers:
+          - image: wordpress:4.8-apache
+            name: wordpress
+            env:
+            - name: WORDPRESS_DB_HOST
+              value: wordpress-mysql
+            - name: WORDPRESS_DB_PASSWORD
+              value: PassWord1234
+            ports:
+            - containerPort: 80
+              name: wordpress
+  placement:
+    clusterNames:
+    - europe
+    - asia
+    - north-america
+  overrides:
+  - clusterName: europe
+    clusterOverrides:
+    - path: spec.replicas
+      value: 3
