@@ -7,7 +7,7 @@ export AWS_REGION="eu-central-1"
 clustername="amoeller"
 owner_email="andre.moeller@plusserver.com"
 aws_RoleArn="arn:aws:iam::703341388306:role/PS-EKSServiceRole"
-aws_NodeInstanceType="t3.micro"
+aws_NodeInstanceType="t3.medium"
 aws_NodeImageId="ami-0d741ed58ca5b342e"
 aws_KeyName="MASTER"
 

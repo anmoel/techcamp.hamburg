@@ -23,6 +23,7 @@ gcloud beta container clusters get-credentials europe --region europe-west4 --pr
 
 vi ~/.kube/config
 kubectl config use-context europe
+kubectl config get-contexts
 ```
 
 3. make me to admin in gcp cluster
@@ -42,7 +43,7 @@ cd federation-v2
 git checkout v0.0.7
 ```
 
-5. generate certificates for istio
+5. generate certificates for istio (optional)
 
 ```bash
 mkdir certs
@@ -85,7 +86,7 @@ cp aws-eks/ca-cert.pem aws-eks/cert-chain.pem
 6. install federation (federation folder)
 
 ```bash
-./scripts/deploy-federation.sh quay.io/kubernetes-multicluster/federation-v2:v0.0.7 asia north-america aws-eks
+./scripts/deploy-federation-latest.sh asia north-america aws-eks
 kubectl get ns
 kubectl -n federation-system get crds
 kubectl -n kube-multicluster-public get clusters
@@ -100,112 +101,8 @@ kubectl apply -f fed-ns.yaml
 kubectl get ns
 kubectl get ns --context=asia
 kubectl get ns --context=north-america
+kubectl get ns --context=aws-eks
 ```
-
-### Demo with wordpress
-
-1. install istio
-
-```bash
-./install-istio.sh
-```
-
-2. label namespace
-
-```bash
-kubectl label namespace test-application istio-injection=enabled
-kubectl describe ns test-application --context asia
-
-```
-
-3. create application and test it in current context
-
-```bash
-kubectl apply -f fed-wordpress.yaml
-kubectl -n test-application get po --context=asia
-kubectl -n test-application get po --context=north-america
-kubectl -n test-application get po
-
-```
-
-4. apply service entries in remote cluster
-
-```bash
-ep_europe=$(kubectl get --context=europe svc --selector=app=istio-ingressgateway -n istio-system -o jsonpath="{.items[0].status.loadBalancer.ingress[0].ip}")
-
-kubectl apply --context=asia -n test-application -f - <<EOF
-apiVersion: networking.istio.io/v1alpha3
-kind: ServiceEntry
-metadata:
-  name: wordpress-mysql-test-application
-spec:
-  hosts:
-  # must be of form name.namespace.global
-  - wordpress-mysql.test-application.global
-  location: MESH_INTERNAL
-  ports:
-  - name: mysql
-    number: 3306
-    protocol: tcp
-  resolution: DNS
-  addresses:
-  - 127.255.0.87 # must be unique in a cluster
-  endpoints:
-  - address: ${ep_europe}
-    ports:
-      mysql: 15443 # Do not change this port value
-EOF
-kubectl --context=asia -n test-application get serviceentry httpbin-test-application -o yaml
-
-kubectl apply --context=north-america -n test-application -f - <<EOF
-apiVersion: networking.istio.io/v1alpha3
-kind: ServiceEntry
-metadata:
-  name: wordpress-mysql-test-application
-spec:
-  hosts:
-  # must be of form name.namespace.global
-  - wordpress-mysql.test-application.global
-  location: MESH_INTERNAL
-  ports:
-  - name: mysql
-    number: 3306
-    protocol: tcp
-  resolution: DNS
-  addresses:
-  - 127.255.0.87 # must be unique in a cluster
-  endpoints:
-  - address: ${ep_europe}
-    ports:
-      mysql: 15443 # Do not change this port value
-EOF
-
-kubectl apply --context=aws-eks -n test-application -f - <<EOF
-apiVersion: networking.istio.io/v1alpha3
-kind: ServiceEntry
-metadata:
-  name: wordpress-mysql-test-application
-spec:
-  hosts:
-  # must be of form name.namespace.global
-  - wordpress-mysql.test-application.global
-  location: MESH_INTERNAL
-  ports:
-  - name: mysql
-    number: 3306
-    protocol: tcp
-  resolution: DNS
-  addresses:
-  - 127.255.0.87 # must be unique in a cluster
-  endpoints:
-  - address: ${ep_europe}
-    ports:
-      mysql: 15443 # Do not change this port value
-EOF
-```
-
-5. test with web-browser
-
 
 ### Demo with sleep and httpbin
 
@@ -220,6 +117,8 @@ EOF
 ```bash
 kubectl label namespace test-application istio-injection=enabled
 kubectl describe ns test-application --context asia
+kubectl describe ns test-application --context north-america
+kubectl describe ns test-application --context aws-eks
 
 ```
 
@@ -230,9 +129,9 @@ kubectl apply -f fed-httpbin.yaml
 kubectl -n test-application get po
 kubectl -n test-application get po --context=asia
 kubectl -n test-application get po --context=north-america
+kubectl -n test-application get po --context aws-eks
 
-export SLEEP_POD=$(kubectl get -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name})
-kubectl exec  $SLEEP_POD -n test-application -c sleep -- curl -I httpbin:8000/headers
+kubectl exec  $(kubectl get -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name}) -n test-application -c sleep -- curl -I httpbin:8000/headers
 
 ```
 
@@ -314,9 +213,15 @@ EOF
 
 5. test
 
-```
-export SLEEP_POD=$(kubectl get --context=asia -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name})
-kubectl exec --context=asia $SLEEP_POD -n test-application -c sleep -- curl -I httpbin.test-application.global:8000/headers
+```bash
+kubectl exec --context=asia $(kubectl get --context=asia -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name}) -n test-application -c sleep -- curl -I httpbin.test-application.global:8000/headers
+
+kubectl exec --context=north-america $(kubectl get --context=north-america -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name}) -n test-application -c sleep -- curl -I httpbin.test-application.global:8000/headers
+
+kubectl exec --context=aws-eks $(kubectl get --context=aws-eks -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name}) -n test-application -c sleep -- curl -I httpbin.test-application.global:8000/headers
+
+kubectl exec  $(kubectl get -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name}) -n test-application -c sleep -- curl -I httpbin:8000/headers
+
 ```
 
 ### cleanup
@@ -324,9 +229,9 @@ kubectl exec --context=asia $SLEEP_POD -n test-application -c sleep -- curl -I h
 1. delete cluster
 
 ```bash
-gcloud container clusters delete europe -z europe-west4
-gcloud container clusters delete asia -z asia-east1
-gcloud container clusters delete north-america -z us-east1
+gcloud container clusters delete europe -z europe-west4 --async --quiet
+gcloud container clusters delete asia -z asia-east1 --async --quiet
+gcloud container clusters delete north-america -z us-east1 --async --quiet
 
 ./delete_eks.sh
 

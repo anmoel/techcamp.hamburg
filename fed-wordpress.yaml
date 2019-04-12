@@ -4,12 +4,14 @@ metadata:
   name: wordpress-mysql
   namespace: test-application
 spec:
-  ports:
-    - port: 3306
-  selector:
-    app: wordpress
-    tier: mysql
-  clusterIP: None
+  template:
+    spec:
+      ports:
+        - port: 3306
+      selector:
+        app: wordpress
+        tier: mysql
+      clusterIP: None
   placement:
     clusterNames:
     - europe
@@ -76,24 +78,27 @@ metadata:
   name: wordpress
   namespace: test-application
 spec:
-  ports:
-    - port: 80
-  selector:
-    app: wordpress
-    tier: frontend
-  type: LoadBalancer
+  template:
+    spec:
+      ports:
+        - port: 80
+      selector:
+        app: wordpress
+        tier: frontend
+      type: LoadBalancer
   placement:
     clusterNames:
     - europe
     - asia
     - north-america
+    - aws-eks
 
 ---
 
 apiVersion: types.federation.k8s.io/v1alpha1
 kind: FederatedDeployment
 metadata:
-  name: wordpress
+  name: wordpress-europe
   namespace: test-application
 spec:
   template:
@@ -122,10 +127,45 @@ spec:
   placement:
     clusterNames:
     - europe
+
+---
+
+apiVersion: types.federation.k8s.io/v1alpha1
+kind: FederatedDeployment
+metadata:
+  name: wordpress-other
+  namespace: test-application
+spec:
+  template:
+    spec:
+      selector:
+        matchLabels:
+          app: wordpress
+          tier: frontend
+      template:
+        metadata:
+          labels:
+            app: wordpress
+            tier: frontend
+        spec:
+          containers:
+          - image: wordpress:4.8-apache
+            name: wordpress
+            env:
+            - name: WORDPRESS_DB_HOST
+              value: wordpress-mysql.test-application.global
+            - name: WORDPRESS_DB_PASSWORD
+              value: PassWord1234
+            ports:
+            - containerPort: 80
+              name: wordpress
+  placement:
+    clusterNames:
     - asia
     - north-america
+    - aws-eks
   overrides:
-  - clusterName: europe
+  - clusterName: asia
     clusterOverrides:
     - path: spec.replicas
       value: 3
