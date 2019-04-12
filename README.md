@@ -318,3 +318,16 @@ EOF
 export SLEEP_POD=$(kubectl get --context=asia -n test-application pod -l app=sleep -o jsonpath={.items..metadata.name})
 kubectl exec --context=asia $SLEEP_POD -n test-application -c sleep -- curl -I httpbin.test-application.global:8000/headers
 ```
+
+### cleanup
+
+1. delete cluster
+
+```bash
+gcloud container clusters delete europe -z europe-west4
+gcloud container clusters delete asia -z asia-east1
+gcloud container clusters delete north-america -z us-east1
+
+./delete_eks.sh
+
+```
