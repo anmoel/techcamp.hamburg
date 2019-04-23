@@ -14,10 +14,15 @@ do
   echo "Cluster: $k8s_context"
   kubectl create namespace istio-system --context="$k8s_context"
   kubectl create secret generic cacerts --context="$k8s_context" -n istio-system \
-    --from-file="istio-$ISTIO_VERSION/samples/certs/ca-cert.pem" \
-    --from-file="istio-$ISTIO_VERSION/samples/certs/ca-key.pem" \
-    --from-file="istio-$ISTIO_VERSION/samples/certs/root-cert.pem" \
-    --from-file="istio-$ISTIO_VERSION/samples/certs/cert-chain.pem"
+    --from-file="./certs/$k8s_context/ca-cert.pem" \
+    --from-file="./certs/$k8s_context/ca-key.pem" \
+    --from-file="./certs/root-cert.pem" \
+    --from-file="./certs/$k8s_context/cert-chain.pem"
+  ### use sample certs
+    # --from-file="istio-$ISTIO_VERSION/samples/certs/ca-cert.pem" \
+    # --from-file="istio-$ISTIO_VERSION/samples/certs/ca-key.pem" \
+    # --from-file="istio-$ISTIO_VERSION/samples/certs/root-cert.pem" \
+    # --from-file="istio-$ISTIO_VERSION/samples/certs/cert-chain.pem"
 
   kubectl apply -f ./istio.yaml --context="$k8s_context"
   proxyip=$(kubectl get svc -n istio-system istiocoredns -o jsonpath={.spec.clusterIP} --context="$k8s_context" )

@@ -29,21 +29,8 @@ authorityKeyIdentifier=keyid:always
  organizationalUnitName = optional
 
  [ myca_extensions ]
- basicConstraints = critical,CA:TRUE
- keyUsage = critical,any
- subjectKeyIdentifier = hash
- authorityKeyIdentifier = keyid:always,issuer
  keyUsage = keyCertSign
- extendedKeyUsage = serverAuth
- subjectAltName  = @alt_names
-
- [ v3_ca ]
- basicConstraints = critical,CA:TRUE,pathlen:0
- keyUsage = critical,any
- subjectKeyIdentifier = hash
- authorityKeyIdentifier = keyid:always,issuer
- keyUsage = keyCertSign
- extendedKeyUsage = serverAuth
+ basicConstraints = CA:TRUE
  subjectAltName  = @alt_names
 
  [alt_names]
