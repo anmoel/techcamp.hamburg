@@ -8,9 +8,9 @@
 2. create clusters and generate kubeconfig
 
 ```bash
-gcloud container clusters create europe -m n1-standard-2 --num-nodes=1 --preemptible -z europe-west4 --async --enable-autoupgrade --cluster-version=1.12.5-gke.5
-gcloud container clusters create asia -m n1-standard-2 --num-nodes=1 --preemptible -z asia-east1 --async --enable-autoupgrade --cluster-version=1.12.5-gke.5
-gcloud container clusters create north-america -m n1-standard-2 --num-nodes=1 --preemptible -z us-east1 --async --enable-autoupgrade --cluster-version=1.12.5-gke.5
+gcloud container clusters create europe -m n1-standard-2 --num-nodes=1 --preemptible -z europe-west4 --async --enable-autoupgrade --cluster-version=1.12.7-gke.7
+gcloud container clusters create asia -m n1-standard-2 --num-nodes=1 --preemptible -z asia-east1 --async --enable-autoupgrade --cluster-version=1.12.7-gke.7
+gcloud container clusters create north-america -m n1-standard-2 --num-nodes=1 --preemptible -z us-east1 --async --enable-autoupgrade --cluster-version=1.12.7-gke.7
 
 gcloud container clusters list
 
